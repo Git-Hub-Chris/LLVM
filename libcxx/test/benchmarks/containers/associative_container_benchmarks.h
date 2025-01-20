@@ -92,14 +92,14 @@ void associative_container_benchmarks(std::string container) {
     ScratchSpace c[BatchSize];
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         new (c + i) Container(src);
         benchmark::DoNotOptimize(c + i);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         reinterpret_cast<Container*>(c + i)->~Container();
       }
       st.ResumeTiming();
@@ -115,14 +115,14 @@ void associative_container_benchmarks(std::string container) {
     ScratchSpace c[BatchSize];
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         new (c + i) Container(in.begin(), in.end());
         benchmark::DoNotOptimize(c + i);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         reinterpret_cast<Container*>(c + i)->~Container();
       }
       st.ResumeTiming();
@@ -137,14 +137,14 @@ void associative_container_benchmarks(std::string container) {
     ScratchSpace c[BatchSize];
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         new (c + i) Container(in.begin(), in.end());
         benchmark::DoNotOptimize(c + i);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         reinterpret_cast<Container*>(c + i)->~Container();
       }
       st.ResumeTiming();
@@ -161,14 +161,14 @@ void associative_container_benchmarks(std::string container) {
     Container c[BatchSize];
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i] = src;
         benchmark::DoNotOptimize(c[i]);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].clear();
       }
       st.ResumeTiming();
@@ -185,7 +185,7 @@ void associative_container_benchmarks(std::string container) {
     std::vector<Container> c(BatchSize, Container(in.begin(), in.end()));
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].insert(to_insert);
         benchmark::DoNotOptimize(c[i]);
         benchmark::ClobberMemory();
@@ -204,14 +204,14 @@ void associative_container_benchmarks(std::string container) {
     std::vector<Container> c(BatchSize, Container(in.begin(), in.end()));
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].insert(to_insert);
         benchmark::DoNotOptimize(c[i]);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].erase(get_key(to_insert));
       }
       st.ResumeTiming();
@@ -226,19 +226,19 @@ void associative_container_benchmarks(std::string container) {
 
     std::vector<Container> c(BatchSize, Container(in.begin(), in.end()));
     typename Container::iterator hints[BatchSize];
-    for (int i = 0; i != BatchSize; ++i) {
+    for (std::size_t i = 0; i != BatchSize; ++i) {
       hints[i] = c[i].lower_bound(get_key(to_insert));
     }
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].insert(hints[i], to_insert);
         benchmark::DoNotOptimize(c[i]);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].erase(get_key(to_insert));
         hints[i] = c[i].lower_bound(get_key(to_insert)); // refresh hints in case of invalidation
       }
@@ -254,14 +254,14 @@ void associative_container_benchmarks(std::string container) {
     std::vector<Container> c(BatchSize, Container(in.begin(), in.end()));
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].insert(c[i].begin(), to_insert);
         benchmark::DoNotOptimize(c[i]);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].erase(get_key(to_insert));
       }
       st.ResumeTiming();
@@ -274,7 +274,7 @@ void associative_container_benchmarks(std::string container) {
 
     // Populate a container with a small number of elements, that's what containers will start with.
     std::vector<Value> small;
-    for (int i = 0; i != (size / 10); ++i) {
+    for (std::size_t i = 0; i != (size / 10); ++i) {
       small.push_back(in.back());
       in.pop_back();
     }
@@ -298,7 +298,7 @@ void associative_container_benchmarks(std::string container) {
     // Populate a container that already contains half the elements we'll try inserting,
     // that's what our container will start with.
     std::vector<Value> small;
-    for (int i = 0; i != size / 2; ++i) {
+    for (std::size_t i = 0; i != size / 2; ++i) {
       small.push_back(in.at(i * 2));
     }
     Container c(small.begin(), small.end());
@@ -324,14 +324,14 @@ void associative_container_benchmarks(std::string container) {
     std::vector<Container> c(BatchSize, Container(in.begin(), in.end()));
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].erase(get_key(element));
         benchmark::DoNotOptimize(c[i]);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].insert(element);
       }
       st.ResumeTiming();
@@ -346,7 +346,7 @@ void associative_container_benchmarks(std::string container) {
     Container c(in.begin(), in.end());
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c.erase(get_key(element));
         benchmark::DoNotOptimize(c);
         benchmark::ClobberMemory();
@@ -363,20 +363,20 @@ void associative_container_benchmarks(std::string container) {
 
     std::vector<Container> c;
     std::vector<typename Container::iterator> iterators;
-    for (int i = 0; i != BatchSize; ++i) {
+    for (std::size_t i = 0; i != BatchSize; ++i) {
       c.push_back(Container(in.begin(), in.end()));
       iterators.push_back(c[i].find(get_key(element)));
     }
 
     while (st.KeepRunningBatch(BatchSize)) {
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         c[i].erase(iterators[i]);
         benchmark::DoNotOptimize(c[i]);
         benchmark::ClobberMemory();
       }
 
       st.PauseTiming();
-      for (int i = 0; i != BatchSize; ++i) {
+      for (std::size_t i = 0; i != BatchSize; ++i) {
         iterators[i] = c[i].insert(element).first;
       }
       st.ResumeTiming();
@@ -430,7 +430,7 @@ void associative_container_benchmarks(std::string container) {
       Container c(in.begin(), in.end());
 
       while (st.KeepRunningBatch(BatchSize)) {
-        for (int i = 0; i != BatchSize; ++i) {
+        for (std::size_t i = 0; i != BatchSize; ++i) {
           auto result = func(c, element);
           benchmark::DoNotOptimize(c);
           benchmark::DoNotOptimize(result);
@@ -449,7 +449,7 @@ void associative_container_benchmarks(std::string container) {
       Container c(in.begin(), in.end());
 
       while (st.KeepRunningBatch(BatchSize)) {
-        for (int i = 0; i != BatchSize; ++i) {
+        for (std::size_t i = 0; i != BatchSize; ++i) {
           auto result = func(c, element);
           benchmark::DoNotOptimize(c);
           benchmark::DoNotOptimize(result);
