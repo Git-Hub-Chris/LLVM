@@ -749,7 +749,6 @@ clang::MakeDeductionFailureInfo(ASTContext &Context,
     break;
 
   case TemplateDeductionResult::Incomplete:
-  case TemplateDeductionResult::InvalidExplicitArguments:
     Result.Data = Info.Param.getOpaqueValue();
     break;
 
@@ -779,6 +778,14 @@ clang::MakeDeductionFailureInfo(ASTContext &Context,
   case TemplateDeductionResult::Inconsistent:
   case TemplateDeductionResult::Underqualified: {
     // FIXME: Should allocate from normal heap so that we can free this later.
+    DFIParamWithArguments *Saved = new (Context) DFIParamWithArguments;
+    Saved->Param = Info.Param;
+    Saved->FirstArg = Info.FirstArg;
+    Saved->SecondArg = Info.SecondArg;
+    Result.Data = Saved;
+    break;
+  }
+  case TemplateDeductionResult::InvalidExplicitArguments: {
     DFIParamWithArguments *Saved = new (Context) DFIParamWithArguments;
     Saved->Param = Info.Param;
     Saved->FirstArg = Info.FirstArg;
@@ -822,13 +829,13 @@ void DeductionFailureInfo::Destroy() {
   case TemplateDeductionResult::Incomplete:
   case TemplateDeductionResult::TooManyArguments:
   case TemplateDeductionResult::TooFewArguments:
-  case TemplateDeductionResult::InvalidExplicitArguments:
   case TemplateDeductionResult::CUDATargetMismatch:
   case TemplateDeductionResult::NonDependentConversionFailure:
     break;
 
   case TemplateDeductionResult::IncompletePack:
   case TemplateDeductionResult::Inconsistent:
+  case TemplateDeductionResult::InvalidExplicitArguments:
   case TemplateDeductionResult::Underqualified:
   case TemplateDeductionResult::DeducedMismatch:
   case TemplateDeductionResult::DeducedMismatchNested:
@@ -885,11 +892,11 @@ TemplateParameter DeductionFailureInfo::getTemplateParameter() {
     return TemplateParameter();
 
   case TemplateDeductionResult::Incomplete:
-  case TemplateDeductionResult::InvalidExplicitArguments:
     return TemplateParameter::getFromOpaqueValue(Data);
 
   case TemplateDeductionResult::IncompletePack:
   case TemplateDeductionResult::Inconsistent:
+  case TemplateDeductionResult::InvalidExplicitArguments:
   case TemplateDeductionResult::Underqualified:
     return static_cast<DFIParamWithArguments*>(Data)->Param;
 
@@ -946,7 +953,6 @@ const TemplateArgument *DeductionFailureInfo::getFirstArg() {
   case TemplateDeductionResult::Incomplete:
   case TemplateDeductionResult::TooManyArguments:
   case TemplateDeductionResult::TooFewArguments:
-  case TemplateDeductionResult::InvalidExplicitArguments:
   case TemplateDeductionResult::SubstitutionFailure:
   case TemplateDeductionResult::CUDATargetMismatch:
   case TemplateDeductionResult::NonDependentConversionFailure:
@@ -955,6 +961,7 @@ const TemplateArgument *DeductionFailureInfo::getFirstArg() {
 
   case TemplateDeductionResult::IncompletePack:
   case TemplateDeductionResult::Inconsistent:
+  case TemplateDeductionResult::InvalidExplicitArguments:
   case TemplateDeductionResult::Underqualified:
   case TemplateDeductionResult::DeducedMismatch:
   case TemplateDeductionResult::DeducedMismatchNested:
@@ -979,7 +986,6 @@ const TemplateArgument *DeductionFailureInfo::getSecondArg() {
   case TemplateDeductionResult::IncompletePack:
   case TemplateDeductionResult::TooManyArguments:
   case TemplateDeductionResult::TooFewArguments:
-  case TemplateDeductionResult::InvalidExplicitArguments:
   case TemplateDeductionResult::SubstitutionFailure:
   case TemplateDeductionResult::CUDATargetMismatch:
   case TemplateDeductionResult::NonDependentConversionFailure:
@@ -987,6 +993,7 @@ const TemplateArgument *DeductionFailureInfo::getSecondArg() {
     return nullptr;
 
   case TemplateDeductionResult::Inconsistent:
+  case TemplateDeductionResult::InvalidExplicitArguments:
   case TemplateDeductionResult::Underqualified:
   case TemplateDeductionResult::DeducedMismatch:
   case TemplateDeductionResult::DeducedMismatchNested:
@@ -11610,9 +11617,10 @@ static void DiagnoseBadDeduction(Sema &S, NamedDecl *Found, Decl *Templated,
                                  bool TakingCandidateAddress) {
   TemplateParameter Param = DeductionFailure.getTemplateParameter();
   NamedDecl *ParamD;
-  (ParamD = Param.dyn_cast<TemplateTypeParmDecl*>()) ||
-  (ParamD = Param.dyn_cast<NonTypeTemplateParmDecl*>()) ||
-  (ParamD = Param.dyn_cast<TemplateTemplateParmDecl*>());
+  (ParamD = Param.dyn_cast<TemplateTypeParmDecl *>()) ||
+      (ParamD = Param.dyn_cast<NonTypeTemplateParmDecl *>()) ||
+      (ParamD = Param.dyn_cast<TemplateTemplateParmDecl *>());
+
   switch (DeductionFailure.getResult()) {
   case TemplateDeductionResult::Success:
     llvm_unreachable(
@@ -11714,13 +11722,52 @@ static void DiagnoseBadDeduction(Sema &S, NamedDecl *Found, Decl *Templated,
     return;
   }
 
-  case TemplateDeductionResult::InvalidExplicitArguments:
+  case TemplateDeductionResult::InvalidExplicitArguments: {
     assert(ParamD && "no parameter found for invalid explicit arguments");
-    if (ParamD->getDeclName())
-      S.Diag(Templated->getLocation(),
-             diag::note_ovl_candidate_explicit_arg_mismatch_named)
-          << ParamD->getDeclName();
-    else {
+    if (ParamD->getDeclName()) {
+      TemplateArgument FirstArg = *DeductionFailure.getFirstArg();
+      std::string ParamName = ParamD->getNameAsString();
+      TemplateArgument SecondArg = *DeductionFailure.getSecondArg();
+
+      if (auto *TTPD = dyn_cast<TemplateTypeParmDecl>(ParamD)) {
+        if (TTPD->wasDeclaredWithTypename())
+          S.Diag(Templated->getLocation(),
+                 diag::note_ovl_candidate_explicit_arg_mismatch_named_ttpd)
+              << ParamD->getDeclName() << FirstArg << SecondArg << ParamName
+              << "type";
+        else {
+          // TODO write tests for type constrained classes
+          if (auto *constraint = TTPD->getTypeConstraint())
+            S.Diag(Templated->getLocation(),
+                   diag::note_ovl_candidate_explicit_arg_mismatch_named_ttpd)
+                << ParamD->getDeclName() << FirstArg << SecondArg << ParamName
+                << "valid type-constrained class";
+          else
+            S.Diag(Templated->getLocation(),
+                   diag::note_ovl_candidate_explicit_arg_mismatch_named_ttpd)
+                << ParamD->getDeclName() << FirstArg << SecondArg << ParamName
+                << "class";
+        }
+      } else if (auto *NTTPD = dyn_cast<NonTypeTemplateParmDecl>(ParamD)) {
+        if (SecondArg.isNull()) {
+          // Expected constant of type 'int', got type 'int'
+          S.Diag(Templated->getLocation(),
+                 diag::note_ovl_candidate_explicit_arg_mismatch_named_nttpd_nsp)
+              << ParamD->getDeclName() << FirstArg << NTTPD->getType();
+        } else {
+          // Could not convert A from B to C
+          S.Diag(Templated->getLocation(),
+                 diag::note_ovl_candidate_explicit_arg_mismatch_named_nttpd_sp)
+              << ParamD->getDeclName() << FirstArg << SecondArg
+              << NTTPD->getType();
+        }
+      } else if (auto *TTempPD = dyn_cast<TemplateTemplateParmDecl>(ParamD)) {
+        S.Diag(Templated->getLocation(),
+               diag::note_ovl_candidate_explicit_arg_mismatch_named)
+            << ParamD->getDeclName();
+      } else
+        llvm_unreachable("unexpected case");
+    } else {
       int index = 0;
       if (TemplateTypeParmDecl *TTP = dyn_cast<TemplateTypeParmDecl>(ParamD))
         index = TTP->getIndex();
@@ -11735,6 +11782,7 @@ static void DiagnoseBadDeduction(Sema &S, NamedDecl *Found, Decl *Templated,
     }
     MaybeEmitInheritedConstructorNote(S, Found);
     return;
+  }
 
   case TemplateDeductionResult::ConstraintsNotSatisfied: {
     // Format the template argument list into the argument string.

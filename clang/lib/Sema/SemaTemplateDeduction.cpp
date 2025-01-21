@@ -3576,6 +3576,13 @@ TemplateDeductionResult Sema::SubstituteExplicitTemplateArguments(
     if (Index >= TemplateParams->size())
       return TemplateDeductionResult::SubstitutionFailure;
     Info.Param = makeTemplateParameter(TemplateParams->getParam(Index));
+    Info.FirstArg = ExplicitTemplateArgs[Index].getArgument();
+    Info.SecondArg = TemplateArgument();
+    if (ExplicitTemplateArgs[Index].getArgument().getKind() ==
+        TemplateArgument::Expression)
+      Info.SecondArg =
+          ExplicitTemplateArgs[Index].getSourceExpression()->getType();
+
     return TemplateDeductionResult::InvalidExplicitArguments;
   }
 
