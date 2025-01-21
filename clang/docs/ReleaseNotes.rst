@@ -800,6 +800,8 @@ Improvements to Clang's diagnostics
 
 - Fix false positives warning for non-std functions with name `infinity` (#123231).
 
+- Clang now diagnoses the use of attribute names reserved by the C++ standard (#GH92196).
+
 Improvements to Clang's time-trace
 ----------------------------------
 
