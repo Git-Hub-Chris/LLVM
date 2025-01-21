@@ -800,6 +800,9 @@ Improvements to Clang's diagnostics
 
 - Fix false positives warning for non-std functions with name `infinity` (#123231).
 
+- The :doc:`ThreadSafetyAnalysis` now supports ``-Wthread-safety-addressof``,
+  which enables warning if the address of guarded variables is obtained.
+
 Improvements to Clang's time-trace
 ----------------------------------
 
